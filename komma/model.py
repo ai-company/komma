@@ -54,8 +54,9 @@ def evaluate(model, data_loader, config: Dict[str, Any], stage: str):
     val_f1s = []
 
     for inputs, labels in data_loader:
+        inputs, labels = inputs.cuda(), labels.cuda()
         with torch.no_grad():
-            outputs = model(inputs) # cuda !!
+            outputs = model(inputs).cpu() # cuda !!
 
             outputs_binary = list(map(lambda x: int(x > 0.6), outputs.view(-1)))
 
@@ -94,6 +95,7 @@ def train_stage(
         with alive_bar(epochs * len(data_loader), title=f"Round {round_i}") as bar:
             for e in range(epochs):
                 for inputs, labels in data_loader:
+                    inputs, labels = inputs.cuda(), labels.cuda()
 
                     output = model(inputs)
 
