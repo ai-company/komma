@@ -1,3 +1,17 @@
 name: komma
+channels:
+  - pytorch
+  - defaults
 dependencies:
-- python=3.8
+  - python=3.8.5
+  - pip=20.3
+  - cudatoolkit=11.3
+  - pytorch=1.12.1
+  - numpy=1.19.2
+  - pip:
+    - toml==0.10.2
+    - alive-progress==2.4.1
+    - sklearn==0.0
+    - wandb==0.13.2
+    - transformers==4.19.2
+    - -e .
