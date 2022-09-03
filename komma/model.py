@@ -15,6 +15,7 @@ from sklearn import metrics
 from transformers import BertConfig, BertModel, BertTokenizer
 from alive_progress import alive_bar
 
+DEMO_TEXT: str = "Nuværende ejere får nemlig en blivende skatterabat så de ikke skal betale den eventuelle stigning i ejendomsværdiskatten når vi går over til det nye system i 2024."
 
 class CommaBERT(nn.Module):
     def __init__(self, config: Dict[str, Any]):
@@ -54,11 +55,13 @@ def evaluate(model, data_loader, config: Dict[str, Any], stage: str):
 
     for inputs, labels in data_loader:
         with torch.no_grad():
-            outputs = model(inputs.cuda()).cpu()
+            outputs = model(inputs) # cuda !!
 
-            val_losses.append(criterion(outputs, labels))
-            val_f1s.append(metrics.f1_score(labels, outputs))
-            val_accuracies.append(metrics.accuracy_score(labels, outputs))
+            outputs_binary = list(map(lambda x: int(x > 0.6), outputs.view(-1)))
+
+            val_losses.append(criterion(outputs.view(-1), labels))
+            val_f1s.append(metrics.f1_score(labels, outputs_binary))
+            val_accuracies.append(metrics.accuracy_score(labels, outputs_binary))
 
     val_loss = np.mean(val_losses)
     val_accuracy = np.mean(val_accuracies)
@@ -68,7 +71,7 @@ def evaluate(model, data_loader, config: Dict[str, Any], stage: str):
 
 
 def train_stage(
-    model, data_loader, val_data_loader, config: Dict[str, Any], stage: str
+    model, data_loader, val_data_loader, config: Dict[str, Any], stage: str, tokenizer: BertTokenizer
 ):
     lr_schedules = config["training"][stage]["lr"]
     epoch_schedules = config["training"][stage]["epochs"]
@@ -117,19 +120,20 @@ def train_stage(
                         "val_accuracy": vm["accuracy"],
                         "loss": tm["loss"],
                         "val_loss": vm["loss"],
-                        "current_stage": stage
+                        "learning_rate": optimizer.lr,
+                        "round": round_i
                     }
                 )
 
                 bar.text = f'... acc={tm["accuracy"]}, f1={tm["f1"]}, val_acc={vm["accuracy"]}, val_f1={vm["f1"]}'
 
 
-def train(config, data_loader, val_data_loader):
+def train(config, data_loader, val_data_loader, tokenizer):
     model = CommaBERT(config)
 
     for stage in config['training']:
         print(f'Training stage: {stage}')
-        train_stage(model, data_loader, val_data_loader, config, stage)
+        train_stage(model, data_loader, val_data_loader, config, stage, tokenizer)
 
     print(config)
 
@@ -171,4 +175,4 @@ if __name__ == "__main__":
     print(f"- on {len(val_data_loader)} validation data")
     print()
 
-    train(config, data_loader, val_data_loader)
+    train(config, data_loader, val_data_loader, tokenizer)
