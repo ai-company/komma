@@ -1,5 +1,20 @@
 [data]
-batch_size = 1028
+batch_size = 10
+segment_size = 32
 
 [model]
-tissemand = "stor"
+dropout = 0.3
+bert_uri = "Maltehb/danish-bert-botxo"
+output_dir = "outputs"
+
+[training.head]
+criterion = "BCELoss"
+optimizer = "Adam"
+lr        = [1e-5]
+epochs    = [1]
+
+[training.full]
+criterion = "BCELoss"
+optimizer = "Adam"
+lr        = [1e-5]
+epochs    = [1]

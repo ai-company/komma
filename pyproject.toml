@@ -10,6 +10,9 @@ python = "^3.8"
 torch = "^1.12.1"
 transformers = "^4.21.2"
 toml = "^0.10.2"
+alive-progress = "^2.4.1"
+sklearn = "^0.0"
+wandb = "^0.13.2"
 
 
 [build-system]
