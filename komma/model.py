@@ -17,6 +17,7 @@ from alive_progress import alive_bar
 
 DEMO_TEXT: str = "Nuværende ejere får nemlig en blivende skatterabat så de ikke skal betale den eventuelle stigning i ejendomsværdiskatten når vi går over til det nye system i 2024."
 
+
 class CommaBERT(nn.Module):
     def __init__(self, config: Dict[str, Any]):
         super(CommaBERT, self).__init__()
@@ -54,9 +55,9 @@ def evaluate(model, data_loader, config: Dict[str, Any], stage: str):
     val_f1s = []
 
     for inputs, labels in data_loader:
-        inputs, labels = inputs.cuda(), labels.cuda()
+        inputs, labels = inputs.cuda(), labels
         with torch.no_grad():
-            outputs = model(inputs).cpu() # cuda !!
+            outputs = model(inputs).cpu()
 
             outputs_binary = list(map(lambda x: int(x > 0.6), outputs.view(-1)))
 
@@ -72,16 +73,22 @@ def evaluate(model, data_loader, config: Dict[str, Any], stage: str):
 
 
 def train_stage(
-    model, data_loader, val_data_loader, config: Dict[str, Any], stage: str, tokenizer: BertTokenizer
+    model,
+    data_loader,
+    val_data_loader,
+    config: Dict[str, Any],
+    stage: str,
+    tokenizer: BertTokenizer,
 ):
     lr_schedules = config["training"][stage]["lr"]
     epoch_schedules = config["training"][stage]["epochs"]
 
     criterion = operator.attrgetter(config["training"][stage]["criterion"])(nn)()
     optimizer = operator.attrgetter(config["training"][stage]["optimizer"])(optim)(
-        model.parameters(),
-        lr=lr_schedules[0]
+        model.parameters(), lr=lr_schedules[0]
     )
+
+    model = model.cuda()
 
     model.train()  # Gym time
 
@@ -95,9 +102,9 @@ def train_stage(
         with alive_bar(epochs * len(data_loader), title=f"Round {round_i}") as bar:
             for e in range(epochs):
                 for inputs, labels in data_loader:
-                    inputs, labels = inputs.cuda(), labels.cuda()
+                    inputs, labels = inputs.cuda(), labels
 
-                    output = model(inputs)
+                    output = model(inputs).cpu()
 
                     loss = criterion(output.view(-1), labels)
                     loss.backward()
@@ -112,8 +119,13 @@ def train_stage(
 
                 if vm["accuracy"] > best_val_accuracy:
                     best_val_accuracy = vm["accuracy"]
-                    torch.save(model.state_dict(), os.path.join(config["model"]["output_dir"], f'model_{e}.pt'))
-                    print(f"Saved model at {best_val_accuracy}% validation accuracy ...")
+                    torch.save(
+                        model.state_dict(),
+                        os.path.join(config["model"]["output_dir"], f"model_{e}.pt"),
+                    )
+                    print(
+                        f"Saved model at {best_val_accuracy}% validation accuracy ..."
+                    )
 
                 wandb.log(
                     {
@@ -123,7 +135,7 @@ def train_stage(
                         "loss": tm["loss"],
                         "val_loss": vm["loss"],
                         "learning_rate": optimizer.lr,
-                        "round": round_i
+                        "round": round_i,
                     }
                 )
 
@@ -133,8 +145,8 @@ def train_stage(
 def train(config, data_loader, val_data_loader, tokenizer):
     model = CommaBERT(config)
 
-    for stage in config['training']:
-        print(f'Training stage: {stage}')
+    for stage in config["training"]:
+        print(f"Training stage: {stage}")
         train_stage(model, data_loader, val_data_loader, config, stage, tokenizer)
 
     print(config)
@@ -144,7 +156,7 @@ if __name__ == "__main__":
     import sys
     from os.path import join, dirname
 
-    data_path = join(dirname(__file__), '..', 'data')
+    data_path = join(dirname(__file__), "..", "data")
 
     config = toml.loads(open(sys.argv[1], "r", encoding="utf-8").read())
 
@@ -153,23 +165,17 @@ if __name__ == "__main__":
         config=dict(
             dropout=config["model"]["dropout"],
             batch_size=config["data"]["batch_size"],
-            segment_size=config["data"]["segment_size"]
-        )
+            segment_size=config["data"]["segment_size"],
+        ),
     )
 
-    tokenizer = BertTokenizer.from_pretrained(config['model']['bert_uri'])
+    tokenizer = BertTokenizer.from_pretrained(config["model"]["bert_uri"])
     data_loader = create_loader(
-        join(data_path, 'train.txt'),
-        tokenizer,
-        48,
-        config['data']['batch_size']
+        join(data_path, "train.txt"), tokenizer, 48, config["data"]["batch_size"]
     )
 
     val_data_loader = create_loader(
-        join(data_path, 'val.txt'),
-        tokenizer,
-        48,
-        config['data']['batch_size']
+        join(data_path, "val.txt"), tokenizer, 48, config["data"]["batch_size"]
     )
 
     print("Train !!!")
