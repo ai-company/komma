@@ -40,13 +40,19 @@ if __name__ == "__main__":
 
     with alive_bar(len(lines), title=f"Processing") as bar:
         for l, line in enumerate(lines):
+            bar()
+
+            # filter hidden unprintable characters
+            line = "".join([c for c in line if c.isprintable()])
+
             if len(line.strip()) == 0:
                 continue  # skip empty lines
 
             result = []
-            bar()
 
-            words = line.split(" ")
+            # split by space, filter empty items
+            words = list(filter(lambda x: len(x) > 0, line.split(" ")))
+
             for w, word in enumerate(words):
                 # next word is either capitalized or the last word, more or less correct, will fail in some cases
                 is_last_word = (
@@ -126,10 +132,11 @@ if __name__ == "__main__":
 
                         for item in groups:
                             if type(item) != str:
-                                if len(item) > 0:
+                                if len(item[1]) > 0:
                                     result.append(item)
                             else:
-                                result.append(("WORD", item))
+                                if len(item) > 0:
+                                    result.append(("WORD", item))
 
                         # result.extend(parsed)
                         # print(parsed)
@@ -191,10 +198,11 @@ if __name__ == "__main__":
 
                         for item in groups:
                             if type(item) != str:
-                                if len(item) > 0:
+                                if len(item[1]) > 0:
                                     result.append(item)
                             else:
-                                result.append(("WORD", item))
+                                if len(item) > 0:
+                                    result.append(("WORD", item))
 
                         # result.extend(parsed)
                         # print(parsed)
@@ -256,10 +264,11 @@ if __name__ == "__main__":
 
                         for item in groups:
                             if type(item) != str:
-                                if len(item) > 0:
+                                if len(item[1]) > 0:
                                     result.append(item)
                             else:
-                                result.append(("WORD", item))
+                                if len(item) > 0:
+                                    result.append(("WORD", item))
 
                         # result.extend(parsed)
                         # print(parsed)
@@ -287,7 +296,6 @@ if __name__ == "__main__":
 
             # convert to model tokens, should handle more sentence endings
             condensed = []
-
             for (t, item) in result:
                 if t == "WORD":
                     condensed.append(f"{item}\tO")
