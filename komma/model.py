@@ -101,9 +101,10 @@ def train_stage(
 
         with alive_bar(epochs * len(data_loader), title=f"Round {round_i}") as bar:
             for e in range(epochs):
-                for inputs, labels in data_loader:
+                for i, (inputs, labels) in enumerate(data_loader):
                     inputs, labels = inputs.cuda(), labels.cuda()
 
+                    model.train()
                     output = model(inputs)
 
                     loss = criterion(output.view(-1), labels)
@@ -112,34 +113,35 @@ def train_stage(
                     optimizer.step()
                     optimizer.zero_grad()
 
+                    if i % config["model"]["status_interval"] == 0:
+                        model.eval()
+                        tm = evaluate(model, data_loader, config, stage)
+                        vm = evaluate(model, val_data_loader, config, stage)
+
+                        if vm["accuracy"] > best_val_accuracy:
+                            best_val_accuracy = vm["accuracy"]
+                            torch.save(
+                                model.state_dict(),
+                                os.path.join(config["model"]["output_dir"], f"model_{e}.pt"),
+                            )
+                            print(
+                                f"Saved model at {best_val_accuracy}% validation accuracy ..."
+                            )
+
+                        wandb.log(
+                            {
+                                "epoch": e,
+                                "accuracy": tm["accuracy"],
+                                "val_accuracy": vm["accuracy"],
+                                "loss": tm["loss"],
+                                "val_loss": vm["loss"],
+                                "learning_rate": optimizer.lr,
+                                "round": round_i,
+                            }
+                        )
+
+                    bar.text = f'... acc={tm["accuracy"]}, f1={tm["f1"]}, val_acc={vm["accuracy"]}, val_f1={vm["f1"]}'
                     bar()
-
-                tm = evaluate(model, data_loader, config, stage)
-                vm = evaluate(model, val_data_loader, config, stage)
-
-                if vm["accuracy"] > best_val_accuracy:
-                    best_val_accuracy = vm["accuracy"]
-                    torch.save(
-                        model.state_dict(),
-                        os.path.join(config["model"]["output_dir"], f"model_{e}.pt"),
-                    )
-                    print(
-                        f"Saved model at {best_val_accuracy}% validation accuracy ..."
-                    )
-
-                wandb.log(
-                    {
-                        "epoch": e,
-                        "accuracy": tm["accuracy"],
-                        "val_accuracy": vm["accuracy"],
-                        "loss": tm["loss"],
-                        "val_loss": vm["loss"],
-                        "learning_rate": optimizer.lr,
-                        "round": round_i,
-                    }
-                )
-
-                bar.text = f'... acc={tm["accuracy"]}, f1={tm["f1"]}, val_acc={vm["accuracy"]}, val_f1={vm["f1"]}'
 
 
 def train(config, data_loader, val_data_loader, tokenizer):
