@@ -55,13 +55,13 @@ def evaluate(model, data_loader, config: Dict[str, Any], stage: str):
     val_f1s = []
 
     for inputs, labels in data_loader:
-        inputs, labels = inputs.cuda(), labels.cuda()
+        inputs, labels = inputs.cuda(), labels
         with torch.no_grad():
             outputs = model(inputs)
 
-            outputs_binary = list(map(lambda x: int(x > 0.6), outputs.view(-1)))
+            outputs_binary = list(map(lambda x: int(x > 0.6), outputs.view(-1).cpu()))
 
-            val_losses.append(criterion(outputs.view(-1), labels))
+            val_losses.append(criterion(outputs.view(-1), labels.cuda()).cpu())
             val_f1s.append(metrics.f1_score(labels, outputs_binary))
             val_accuracies.append(metrics.accuracy_score(labels, outputs_binary))
 
@@ -122,7 +122,9 @@ def train_stage(
                             best_val_accuracy = vm["accuracy"]
                             torch.save(
                                 model.state_dict(),
-                                os.path.join(config["model"]["output_dir"], f"model_{e}.pt"),
+                                os.path.join(
+                                    config["model"]["output_dir"], f"model_{e}.pt"
+                                ),
                             )
                             print(
                                 f"Saved model at {best_val_accuracy}% validation accuracy ..."
@@ -137,6 +139,8 @@ def train_stage(
                                 "val_loss": vm["loss"],
                                 "learning_rate": optimizer.lr,
                                 "round": round_i,
+                                "f1": tm["f1"],
+                                "val_f1": vm["f1"],
                             }
                         )
 

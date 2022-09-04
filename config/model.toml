@@ -8,6 +8,7 @@ dataset_path = "da-en/europarl-v7.da-en.da"
 dropout = 0.3
 bert_uri = "Maltehb/danish-bert-botxo"
 output_dir = "outputs"
+status_interval = 10000
 
 [training.head]
 criterion = "BCELoss"
