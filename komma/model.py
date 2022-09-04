@@ -48,16 +48,16 @@ class CommaBERT(nn.Module):
 
 
 def evaluate(model, data_loader, config: Dict[str, Any], stage: str):
-    criterion = operator.attrgetter(config["training"][stage]["criterion"])(nn)()
+    criterion = operator.attrgetter(config["training"][stage]["criterion"])(nn)().cuda()
 
     val_losses = []
     val_accuracies = []
     val_f1s = []
 
     for inputs, labels in data_loader:
-        inputs, labels = inputs.cuda(), labels
+        inputs, labels = inputs.cuda(), labels.cuda()
         with torch.no_grad():
-            outputs = model(inputs).cpu()
+            outputs = model(inputs)
 
             outputs_binary = list(map(lambda x: int(x > 0.6), outputs.view(-1)))
 
@@ -83,7 +83,7 @@ def train_stage(
     lr_schedules = config["training"][stage]["lr"]
     epoch_schedules = config["training"][stage]["epochs"]
 
-    criterion = operator.attrgetter(config["training"][stage]["criterion"])(nn)()
+    criterion = operator.attrgetter(config["training"][stage]["criterion"])(nn)().cuda()
     optimizer = operator.attrgetter(config["training"][stage]["optimizer"])(optim)(
         model.parameters(), lr=lr_schedules[0]
     )
@@ -102,9 +102,9 @@ def train_stage(
         with alive_bar(epochs * len(data_loader), title=f"Round {round_i}") as bar:
             for e in range(epochs):
                 for inputs, labels in data_loader:
-                    inputs, labels = inputs.cuda(), labels
+                    inputs, labels = inputs.cuda(), labels.cuda()
 
-                    output = model(inputs).cpu()
+                    output = model(inputs)
 
                     loss = criterion(output.view(-1), labels)
                     loss.backward()
